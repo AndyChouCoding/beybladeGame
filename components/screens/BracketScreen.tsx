@@ -3,7 +3,7 @@ import { useTournamentStore } from '@/store/tournamentStore'
 import BracketView from '@/components/bracket/BracketView'
 
 export default function BracketScreen() {
-  const { tournamentName, bracket, reset } = useTournamentStore()
+  const { tournamentName, bracket, reset, goToPlayers } = useTournamentStore()
 
   const totalRounds = bracket.length
   const completedMatches = bracket.flat().filter((m) => m.status === 'completed').length
@@ -23,9 +23,14 @@ export default function BracketScreen() {
             賽程進度：{completedMatches} / {totalRealMatches} 場完成
           </p>
         </div>
-        <button className="btn-ghost" onClick={reset}>
-          新比賽
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-ghost" onClick={goToPlayers}>
+            管理選手
+          </button>
+          <button className="btn-ghost" onClick={reset}>
+            新比賽
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6">
