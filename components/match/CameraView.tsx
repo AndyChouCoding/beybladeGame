@@ -14,9 +14,20 @@ interface Props {
 
 const PROCESS_W = 160
 const PROCESS_H = 120
-const MOTION_THRESHOLD = 35
-const MIN_MOTION_PIXELS = 40
+const MOTION_THRESHOLD = 28
 const TRAIL_DURATION_MS = 3000
+
+// Grid-based blob detection: find the densest motion cell instead of averaging all motion pixels
+const GRID_COLS = 16
+const GRID_ROWS = 12
+const CELL_W = PROCESS_W / GRID_COLS   // 10px per cell
+const CELL_H = PROCESS_H / GRID_ROWS   // 10px per cell
+const MIN_PEAK_COUNT = 6               // minimum motion pixels for a valid detection
+const NEIGHBORHOOD = 2                 // aggregate (2*N+1)² cells around peak
+
+// EMA smoothing
+const EMA_ALPHA = 0.38
+const MAX_JUMP_DIST = 0.28             // fraction of screen; beyond this, dampen the jump
 
 export default function CameraView({ isTracking, countdownOverlay }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -24,6 +35,7 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
   const processRef = useRef<HTMLCanvasElement>(null)
   const positionsRef = useRef<Position[]>([])
   const prevFrameRef = useRef<ImageData | null>(null)
+  const smoothedPosRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef<number>(0)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
@@ -71,7 +83,11 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
     if (prevFrameRef.current) {
       const prev = prevFrameRef.current.data
       const curr = currentFrame.data
-      let sumX = 0, sumY = 0, count = 0
+
+      // Build motion density grid
+      const gridCount = new Int32Array(GRID_ROWS * GRID_COLS)
+      const gridSumX = new Float32Array(GRID_ROWS * GRID_COLS)
+      const gridSumY = new Float32Array(GRID_ROWS * GRID_COLS)
 
       for (let i = 0; i < curr.length; i += 4) {
         const diff =
@@ -79,19 +95,70 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
           Math.abs(curr[i + 1] - prev[i + 1]) +
           Math.abs(curr[i + 2] - prev[i + 2])
         if (diff > MOTION_THRESHOLD) {
-          const idx = i / 4
-          sumX += idx % PROCESS_W
-          sumY += Math.floor(idx / PROCESS_W)
-          count++
+          const idx = i >> 2
+          const px = idx % PROCESS_W
+          const py = (idx / PROCESS_W) | 0
+          const col = Math.min((px / CELL_W) | 0, GRID_COLS - 1)
+          const row = Math.min((py / CELL_H) | 0, GRID_ROWS - 1)
+          const gi = row * GRID_COLS + col
+          gridCount[gi]++
+          gridSumX[gi] += px
+          gridSumY[gi] += py
         }
       }
 
-      if (count >= MIN_MOTION_PIXELS) {
-        positionsRef.current.push({
-          x: sumX / count / PROCESS_W,
-          y: sumY / count / PROCESS_H,
-          t: Date.now(),
-        })
+      // Find the peak cell (densest motion)
+      let peakGi = 0
+      let peakCount = 0
+      for (let gi = 0; gi < gridCount.length; gi++) {
+        if (gridCount[gi] > peakCount) {
+          peakCount = gridCount[gi]
+          peakGi = gi
+        }
+      }
+
+      if (peakCount >= MIN_PEAK_COUNT) {
+        const peakRow = (peakGi / GRID_COLS) | 0
+        const peakCol = peakGi % GRID_COLS
+
+        // Aggregate centroid within the neighborhood of the peak cell
+        let sumX = 0, sumY = 0, count = 0
+        const r0 = Math.max(0, peakRow - NEIGHBORHOOD)
+        const r1 = Math.min(GRID_ROWS - 1, peakRow + NEIGHBORHOOD)
+        const c0 = Math.max(0, peakCol - NEIGHBORHOOD)
+        const c1 = Math.min(GRID_COLS - 1, peakCol + NEIGHBORHOOD)
+
+        for (let r = r0; r <= r1; r++) {
+          for (let c = c0; c <= c1; c++) {
+            const gi = r * GRID_COLS + c
+            sumX += gridSumX[gi]
+            sumY += gridSumY[gi]
+            count += gridCount[gi]
+          }
+        }
+
+        if (count > 0) {
+          const rawX = sumX / count / PROCESS_W
+          const rawY = sumY / count / PROCESS_H
+
+          let sx: number, sy: number
+          const prev = smoothedPosRef.current
+          if (prev === null) {
+            sx = rawX
+            sy = rawY
+          } else {
+            const dx = rawX - prev.x
+            const dy = rawY - prev.y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            // Dampen large jumps — likely noise or hand interference
+            const alpha = dist > MAX_JUMP_DIST ? EMA_ALPHA * 0.25 : EMA_ALPHA
+            sx = alpha * rawX + (1 - alpha) * prev.x
+            sy = alpha * rawY + (1 - alpha) * prev.y
+          }
+
+          smoothedPosRef.current = { x: sx, y: sy }
+          positionsRef.current.push({ x: sx, y: sy, t: Date.now() })
+        }
       }
     }
 
@@ -136,10 +203,12 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
     if (isTracking) {
       positionsRef.current = []
       prevFrameRef.current = null
+      smoothedPosRef.current = null
       rafRef.current = requestAnimationFrame(drawTrail)
     } else {
       cancelAnimationFrame(rafRef.current)
       positionsRef.current = []
+      smoothedPosRef.current = null
       const overlay = overlayRef.current
       if (overlay) {
         const ctx = overlay.getContext('2d')
