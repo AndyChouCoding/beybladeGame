@@ -21,7 +21,14 @@ interface TournamentStore {
   removeScore: (player: 1 | 2) => void
   completeMatch: (winner: 1 | 2) => void
   goToBracket: () => void
+  goToPlayers: () => void
   reset: () => void
+
+  addPlayer: (name: string) => void
+  updatePlayer: (id: string, name: string) => void
+  removePlayer: (id: string) => void
+  reorderPlayers: (fromIndex: number, toIndex: number) => void
+  importPlayers: (names: string[]) => void
 }
 
 export const useTournamentStore = create<TournamentStore>()(
@@ -113,6 +120,51 @@ export const useTournamentStore = create<TournamentStore>()(
       },
 
       goToBracket: () => set({ phase: 'bracket' }),
+
+      goToPlayers: () => set({ phase: 'players' }),
+
+      addPlayer: (name) =>
+        set((state) => ({
+          players: [
+            ...state.players,
+            { id: `p${Date.now()}_${Math.random().toString(36).slice(2)}`, name },
+          ],
+        })),
+
+      updatePlayer: (id, name) =>
+        set((state) => ({
+          players: state.players.map((p) => (p.id === id ? { ...p, name } : p)),
+          bracket: state.bracket.map((round) =>
+            round.map((match) => ({
+              ...match,
+              player1: match.player1?.id === id ? { ...match.player1, name } : match.player1,
+              player2: match.player2?.id === id ? { ...match.player2, name } : match.player2,
+              winner: match.winner?.id === id ? { ...match.winner, name } : match.winner,
+            }))
+          ),
+          champion: state.champion?.id === id ? { ...state.champion, name } : state.champion,
+        })),
+
+      removePlayer: (id) =>
+        set((state) => ({
+          players: state.players.filter((p) => p.id !== id),
+        })),
+
+      reorderPlayers: (fromIndex, toIndex) =>
+        set((state) => {
+          const next = [...state.players]
+          const [moved] = next.splice(fromIndex, 1)
+          next.splice(toIndex, 0, moved)
+          return { players: next }
+        }),
+
+      importPlayers: (names) =>
+        set({
+          players: names.map((name, i) => ({
+            id: `p${Date.now()}_${i}`,
+            name,
+          })),
+        }),
 
       reset: () =>
         set({
