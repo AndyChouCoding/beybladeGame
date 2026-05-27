@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+- Removed camera trajectory overlay (motion-detection canvas + EMA trail) from CameraView;
+  the camera now shows a clean live feed only.
+- MatchScreen layout is now responsive:
+  - Mobile (< 768 px): flex-col — camera fills top area, phase-control bar, scoreboard as
+    a horizontal strip at the bottom with the two players side-by-side.
+  - Desktop (≥ 768 px): flex-row — camera on the left (flex-1), scoreboard on the right
+    (32 % width) as a vertical panel; phase-control button below the camera.
+- Scoreboard switches between horizontal (mobile) and vertical (desktop) layout using
+  responsive Tailwind classes; score dots and font sizes scale down on mobile.
+
 ## [v1.1.0] - 2026-05-27
 
 ### Added
