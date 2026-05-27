@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Auto-populate player names (Player 1 … Player N) when entering the Players screen from Setup
+- `Player.photoUrl` field for storing per-player avatar images
+- `setPlayerPhoto` store action — syncs photo across players list, bracket, and champion state
+- `PlayerAvatar` component: circular avatar showing photo or coloured initial letter
+- Photo upload (📁) and live camera capture (📷) per player in PlayersScreen
+- Player avatars displayed in: PlayersScreen roster, Match scoreboard panels, Bracket match cards, Champion reveal screen
+- `utils/image.ts`: canvas-based image resize (200 px / JPEG 0.75) to keep localStorage footprint small
+
 ## [v1.0.0] - 2026-05-21
 
 ### Added

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useTournamentStore } from '@/store/tournamentStore'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 function nextPowerOf2(n: number): number {
   let p = 1
@@ -27,6 +28,7 @@ export default function PlayersScreen() {
     players,
     addPlayer,
     updatePlayer,
+    setPlayerPhoto,
     removePlayer,
     reorderPlayers,
     importPlayers,
@@ -193,13 +195,13 @@ export default function PlayersScreen() {
                   ⠿
                 </span>
 
-                {/* Index badge */}
-                <span
-                  className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: '#1e293b', color: '#64748b' }}
-                >
-                  {i + 1}
-                </span>
+                {/* Avatar — click to upload / take photo */}
+                <PlayerAvatar
+                  player={player}
+                  size={36}
+                  editable
+                  onPhotoChange={(url) => setPlayerPhoto(player.id, url)}
+                />
 
                 {/* Editable name */}
                 <input
