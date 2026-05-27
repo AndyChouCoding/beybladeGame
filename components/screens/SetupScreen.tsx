@@ -4,6 +4,7 @@ import { useTournamentStore } from '@/store/tournamentStore'
 
 export default function SetupScreen() {
   const setSetup = useTournamentStore((s) => s.setSetup)
+  const savedPlayers = useTournamentStore((s) => s.players)
   const [name, setName] = useState('')
   const [count, setCount] = useState(8)
 
@@ -47,9 +48,15 @@ export default function SetupScreen() {
               value={count}
               onChange={(e) => setCount(Math.max(2, parseInt(e.target.value) || 2))}
             />
-            <p className="text-xs text-slate-500">
-              若人數非 2 的冪次，將自動補輪空（BYE）
-            </p>
+            {savedPlayers.length > 0 ? (
+              <p className="text-xs" style={{ color: '#f59e0b' }}>
+                ✓ 已有 {savedPlayers.length} 位選手，進入下一步後將直接沿用
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                若人數非 2 的冪次，將自動補輪空（BYE）
+              </p>
+            )}
           </div>
 
           <button type="submit" className="btn-primary w-full mt-2" disabled={!name.trim()}>
