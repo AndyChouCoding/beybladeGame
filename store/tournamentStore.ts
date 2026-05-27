@@ -30,6 +30,7 @@ interface TournamentStore {
   removePlayer: (id: string) => void
   reorderPlayers: (fromIndex: number, toIndex: number) => void
   importPlayers: (names: string[]) => void
+  clearPlayers: () => void
 }
 
 export const useTournamentStore = create<TournamentStore>()(
@@ -45,16 +46,20 @@ export const useTournamentStore = create<TournamentStore>()(
       champion: null,
 
       setSetup: (name, count) =>
-        set({
+        set((state) => ({
           tournamentName: name,
           playerCount: count,
           phase: 'players',
-          // Pre-populate with default names so users only need to rename, not type from scratch
-          players: Array.from({ length: count }, (_, i) => ({
-            id: `p${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
-            name: `Player ${i + 1}`,
-          })),
-        }),
+          // Reuse existing players if any; only auto-generate defaults when the list is empty.
+          // This lets the same roster carry over into a new tournament without re-entry.
+          players:
+            state.players.length > 0
+              ? state.players
+              : Array.from({ length: count }, (_, i) => ({
+                  id: `p${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+                  name: `Player ${i + 1}`,
+                })),
+        })),
 
       setPlayers: (players) => set({ players }),
 
@@ -229,16 +234,20 @@ export const useTournamentStore = create<TournamentStore>()(
         }),
 
       reset: () =>
-        set({
+        set((state) => ({
+          // Keep players so they can be reused in the next tournament.
+          // Use clearPlayers() to explicitly wipe the roster.
+          players: state.players,
           tournamentName: '',
           playerCount: 4,
-          players: [],
           bracket: [],
           currentRound: 0,
           currentMatchIndex: 0,
           phase: 'setup',
           champion: null,
-        }),
+        })),
+
+      clearPlayers: () => set({ players: [] }),
     }),
     { name: 'gyro-battle-store' }
   )

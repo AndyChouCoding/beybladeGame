@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- "全部清除" button in PlayersScreen — clears the entire roster after inline confirmation
+- Players now persist across tournaments; reset/new-tournament no longer wipes the player list
+- SetupScreen shows "已有 N 位選手，將直接沿用" hint when a saved roster exists
+- `clearPlayers` store action for explicit roster wipe
+
 ### Fixed
 - Bracket BYE seeding: players with a first-round BYE no longer skip directly to the final.
   `propagateByes` now only auto-completes a match when BOTH its feeding matches are already
