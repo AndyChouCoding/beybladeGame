@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v1.2.1] - 2026-05-27
+
 ### Fixed
 - SetupScreen player-count input: changing `count` state from `number` to `string` so the
   field can be freely cleared/retyped. Previously `parseInt('') || 2` forced the value back
