@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+- Bracket BYE seeding: players with a first-round BYE no longer skip directly to the final.
+  `propagateByes` now only auto-completes a match when BOTH its feeding matches are already
+  resolved, preventing "unfilled pending slots" from being mistaken for permanent BYEs.
+- `completeMatch` store action now propagates winners through consecutive BYE slots during
+  live play (e.g. 6-player bracket where one semi-final has a null opponent).
+
 ### Added
 - Auto-populate player names (Player 1 … Player N) when entering the Players screen from Setup
 - `Player.photoUrl` field for storing per-player avatar images
