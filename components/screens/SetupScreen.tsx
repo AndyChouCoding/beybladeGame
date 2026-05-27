@@ -6,12 +6,16 @@ export default function SetupScreen() {
   const setSetup = useTournamentStore((s) => s.setSetup)
   const savedPlayers = useTournamentStore((s) => s.players)
   const [name, setName] = useState('')
-  const [count, setCount] = useState(8)
+  // Store as string so the field can be freely cleared while typing
+  const [countStr, setCountStr] = useState('8')
+
+  const parsedCount = parseInt(countStr, 10)
+  const countValid = !isNaN(parsedCount) && parsedCount >= 2 && parsedCount <= 64
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || count < 2) return
-    setSetup(name.trim(), count)
+    if (!name.trim() || !countValid) return
+    setSetup(name.trim(), parsedCount)
   }
 
   return (
@@ -45,9 +49,17 @@ export default function SetupScreen() {
               type="number"
               min={2}
               max={64}
-              value={count}
-              onChange={(e) => setCount(Math.max(2, parseInt(e.target.value) || 2))}
+              value={countStr}
+              onChange={(e) => setCountStr(e.target.value)}
+              onBlur={() => {
+                // On blur: clamp to valid range, or reset to 2 if empty/invalid
+                if (!countValid) setCountStr('2')
+                else setCountStr(String(Math.min(parsedCount, 64)))
+              }}
             />
+            {!countValid && countStr !== '' && (
+              <p className="text-xs text-red-400">請輸入 2 – 64 之間的整數</p>
+            )}
             {savedPlayers.length > 0 ? (
               <p className="text-xs" style={{ color: '#f59e0b' }}>
                 ✓ 已有 {savedPlayers.length} 位選手，進入下一步後將直接沿用
@@ -59,7 +71,7 @@ export default function SetupScreen() {
             )}
           </div>
 
-          <button type="submit" className="btn-primary w-full mt-2" disabled={!name.trim()}>
+          <button type="submit" className="btn-primary w-full mt-2" disabled={!name.trim() || !countValid}>
             下一步：輸入選手
           </button>
         </form>
