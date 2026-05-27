@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+- Camera trajectory detection: trail was cramped in one area and misaligned with the actual
+  gyro position. Root cause was that `drawImage` captured the full video frame (including
+  regions cropped out by CSS `object-cover`) while the overlay canvas only displayed the
+  visible portion — creating a coordinate mismatch. Now the process canvas samples only the
+  visible video rectangle, so detected positions correctly align with what is shown on screen.
+- Tuned motion detection parameters: `MIN_PEAK_COUNT` 6→15 (reduce noise), `NEIGHBORHOOD` 2→1
+  (more precise centroid), `EMA_ALPHA` 0.38→0.55 (more responsive tracking), `MAX_JUMP_DIST`
+  0.28→0.40 (allow genuine fast moves), large-jump damping factor 0.25→0.5 (less suppression).
+
 ### Added
 - "全部清除" button in PlayersScreen — clears the entire roster after inline confirmation
 - Players now persist across tournaments; reset/new-tournament no longer wipes the player list
