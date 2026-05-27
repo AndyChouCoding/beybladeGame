@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+- SetupScreen player-count input: changing `count` state from `number` to `string` so the
+  field can be freely cleared/retyped. Previously `parseInt('') || 2` forced the value back
+  to 2 on every keystroke, making it impossible to delete the current number.
+  An inline error message now appears for out-of-range values, and `onBlur` clamps/resets
+  the field to a valid value. The submit button is disabled while the count is invalid.
+
 ## [v1.2.0] - 2026-05-27
 
 ### Changed
