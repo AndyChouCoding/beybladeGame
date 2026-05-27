@@ -1,5 +1,6 @@
 'use client'
 import { Player } from '@/types'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 interface Props {
   player1: Player
@@ -80,15 +81,21 @@ function PlayerPanel({
         </div>
       )}
 
-      <p
-        className="text-sm font-semibold mb-2 px-2 text-center truncate w-full"
-        style={{ color: isLoser ? '#475569' : '#94a3b8' }}
-      >
-        {player.name}
-      </p>
+      <div className="flex flex-col items-center gap-1 mb-2">
+        <PlayerAvatar
+          player={player}
+          size={44}
+        />
+        <p
+          className="text-xs font-semibold px-2 text-center truncate w-full"
+          style={{ color: isLoser ? '#475569' : '#94a3b8' }}
+        >
+          {player.name}
+        </p>
+      </div>
 
       <div
-        className="text-7xl font-black leading-none"
+        className="text-6xl font-black leading-none"
         style={{ color: isWinner ? '#f59e0b' : isLoser ? '#334155' : '#f1f5f9' }}
       >
         {score}
