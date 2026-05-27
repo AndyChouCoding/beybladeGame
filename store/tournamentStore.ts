@@ -108,23 +108,61 @@ export const useTournamentStore = create<TournamentStore>()(
           match.winner = winner === 1 ? match.player1 : match.player2
           match.status = 'completed'
 
-          const nextRound = currentRound + 1
-          const isFinal = nextRound >= newBracket.length
+          // Walk the winner forward through any BYE slots.
+          // Stop when we hit a real opponent (both players present),
+          // a pending peer (real match yet to be played), or the end of the bracket.
+          let fromRound = currentRound
+          let fromMatchIdx = currentMatchIndex
+          let advancing = match.winner
 
-          if (!isFinal) {
-            const nextMatchIndex = Math.floor(currentMatchIndex / 2)
-            const nextMatch = newBracket[nextRound][nextMatchIndex]
-            if (currentMatchIndex % 2 === 0) {
-              nextMatch.player1 = match.winner
+          while (true) {
+            const toRound = fromRound + 1
+            if (toRound >= newBracket.length) break
+
+            const toMatchIdx = Math.floor(fromMatchIdx / 2)
+            const toSlot = fromMatchIdx % 2      // 0 → fills player1, 1 → fills player2
+            const toMatch = newBracket[toRound][toMatchIdx]
+
+            // Place the advancing player
+            if (toSlot === 0) {
+              toMatch.player1 = advancing
             } else {
-              nextMatch.player2 = match.winner
+              toMatch.player2 = advancing
+            }
+
+            // Check the peer feeding match in fromRound
+            const peerIdx = toSlot === 0 ? toMatchIdx * 2 + 1 : toMatchIdx * 2
+            const peer = newBracket[fromRound][peerIdx]
+
+            if (peer.status !== 'completed') break  // real opponent still coming
+
+            // Peer is resolved — check whether toMatch is a BYE
+            const { player1: p1, player2: p2 } = toMatch
+            if (p1 !== null && p2 === null) {
+              toMatch.winner = p1
+              toMatch.status = 'completed'
+              advancing = p1
+              fromRound = toRound
+              fromMatchIdx = toMatchIdx
+            } else if (p2 !== null && p1 === null) {
+              toMatch.winner = p2
+              toMatch.status = 'completed'
+              advancing = p2
+              fromRound = toRound
+              fromMatchIdx = toMatchIdx
+            } else {
+              break  // real match (both slots filled) or both null — stop here
             }
           }
 
+          // Determine championship by inspecting the final round's single match
+          const finalMatch = newBracket[newBracket.length - 1][0]
+          const isChampion = finalMatch.status === 'completed' && finalMatch.winner !== null
+
           return {
             bracket: newBracket,
-            phase: isFinal ? 'champion' : 'bracket',
-            champion: isFinal ? match.winner : state.champion,
+            phase: isChampion ? 'champion' : 'bracket',
+            champion: isChampion ? finalMatch.winner : state.champion,
           }
         })
       },
