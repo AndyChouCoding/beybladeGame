@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v1.2.0] - 2026-05-27
+
 ### Changed
 - Removed camera trajectory overlay (motion-detection canvas + EMA trail) from CameraView;
   the camera now shows a clean live feed only.
