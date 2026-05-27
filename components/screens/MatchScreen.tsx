@@ -127,9 +127,33 @@ export default function MatchScreen() {
 
   if (!match || !match.player1 || !match.player2) return null
 
+  // Shared phase control UI — rendered in two places (desktop / mobile)
+  const phaseControls = (
+    <>
+      {phase === 'idle' && (
+        <button
+          className="btn-primary"
+          style={{ fontSize: '1rem', padding: '0.75rem 2.5rem', letterSpacing: '0.05em' }}
+          onClick={startCountdown}
+        >
+          比賽開始
+        </button>
+      )}
+      {phase === 'countdown' && (
+        <span className="text-slate-400 text-sm animate-pulse">準備中...</span>
+      )}
+      {phase === 'active' && (
+        <span className="text-xs text-slate-600">點擊計分板加分</span>
+      )}
+      {phase === 'finished' && (
+        <span className="text-slate-500 text-sm">比賽已結束</span>
+      )}
+    </>
+  )
+
   return (
     <div className="relative flex flex-col h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Header */}
+      {/* ── Header ── */}
       <header
         className="flex items-center justify-between px-4 py-2 flex-shrink-0"
         style={{ borderBottom: '1px solid #1e293b', height: '44px' }}
@@ -140,56 +164,60 @@ export default function MatchScreen() {
           </h2>
           <button
             onClick={() => setShowEditPlayers(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '0.75rem', flexShrink: 0, padding: '2px 4px' }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#475569', fontSize: '0.75rem', flexShrink: 0, padding: '2px 4px',
+            }}
             title="編輯選手姓名"
           >
             ✏
           </button>
         </div>
         <span className="text-xs text-slate-500 flex-shrink-0">
-          {phase === 'idle' && '等待開始'}
+          {phase === 'idle'      && '等待開始'}
           {phase === 'countdown' && '倒數中...'}
-          {phase === 'active' && '比賽進行中'}
-          {phase === 'finished' && '比賽結束'}
+          {phase === 'active'    && '比賽進行中'}
+          {phase === 'finished'  && '比賽結束'}
         </span>
       </header>
 
-      {/* Main area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left: Camera (80%) */}
-        <div className="flex flex-col" style={{ width: '80%' }}>
-          <div className="flex-1 p-3 pb-0 overflow-hidden">
+      {/* ── Main area ──
+          Mobile  (< md): flex-col  — camera top, controls bar, scoreboard strip
+          Desktop (≥ md): flex-row  — camera left (~68%), scoreboard right (~32%)
+      */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+
+        {/* Camera area */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 p-2 md:p-3 overflow-hidden">
             <CameraView
-              isTracking={phase === 'active'}
               countdownOverlay={phase === 'countdown' ? countdownText : null}
             />
           </div>
 
-          {/* Start button */}
-          <div className="flex items-center justify-center py-4 px-3">
-            {phase === 'idle' && (
-              <button
-                className="btn-primary"
-                style={{ fontSize: '1.1rem', padding: '0.875rem 3rem', letterSpacing: '0.05em' }}
-                onClick={startCountdown}
-              >
-                比賽開始
-              </button>
-            )}
-            {phase === 'countdown' && (
-              <span className="text-slate-400 text-sm animate-pulse">準備中...</span>
-            )}
-            {phase === 'active' && (
-              <span className="text-xs text-slate-600">點擊右側計分板加分</span>
-            )}
-            {phase === 'finished' && (
-              <span className="text-slate-500 text-sm">比賽已結束</span>
-            )}
+          {/* Desktop phase controls (below camera) */}
+          <div
+            className="hidden md:flex items-center justify-center py-4 px-3 flex-shrink-0"
+            style={{ borderTop: '1px solid #1e293b' }}
+          >
+            {phaseControls}
           </div>
         </div>
 
-        {/* Right: Scoreboard (20%) */}
-        <div style={{ width: '20%' }}>
+        {/* Mobile phase controls bar (between camera and scoreboard) */}
+        <div
+          className="md:hidden flex items-center justify-center py-2 px-3 flex-shrink-0"
+          style={{ borderTop: '1px solid #1e293b', borderBottom: '1px solid #1e293b' }}
+        >
+          {phaseControls}
+        </div>
+
+        {/* Scoreboard
+            Mobile : full-width horizontal strip at the bottom
+            Desktop: fixed-width right sidebar                   */}
+        <div
+          className="flex-shrink-0 md:w-[32%] md:border-l border-slate-800"
+        >
           <Scoreboard
             player1={match.player1}
             player2={match.player2}
@@ -203,7 +231,7 @@ export default function MatchScreen() {
         </div>
       </div>
 
-      {/* Edit players modal */}
+      {/* ── Edit players modal ── */}
       {showEditPlayers && (
         <EditPlayersModal
           name1={match.player1.name}
@@ -217,7 +245,7 @@ export default function MatchScreen() {
         />
       )}
 
-      {/* Winner overlay */}
+      {/* ── Winner overlay ── */}
       {phase === 'finished' && winner && (
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
