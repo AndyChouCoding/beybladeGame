@@ -22,12 +22,12 @@ const GRID_COLS = 16
 const GRID_ROWS = 12
 const CELL_W = PROCESS_W / GRID_COLS   // 10px per cell
 const CELL_H = PROCESS_H / GRID_ROWS   // 10px per cell
-const MIN_PEAK_COUNT = 6               // minimum motion pixels for a valid detection
-const NEIGHBORHOOD = 2                 // aggregate (2*N+1)² cells around peak
+const MIN_PEAK_COUNT = 15              // minimum motion pixels for a valid detection
+const NEIGHBORHOOD = 1                 // aggregate (2*N+1)² cells around peak
 
 // EMA smoothing
-const EMA_ALPHA = 0.38
-const MAX_JUMP_DIST = 0.28             // fraction of screen; beyond this, dampen the jump
+const EMA_ALPHA = 0.55
+const MAX_JUMP_DIST = 0.40             // fraction of screen; beyond this, dampen the jump
 
 export default function CameraView({ isTracking, countdownOverlay }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -77,7 +77,20 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
       return
     }
 
-    processCtx.drawImage(video, 0, 0, PROCESS_W, PROCESS_H)
+    // Capture only the visible portion of the video (accounting for object-cover cropping).
+    // The overlay canvas fills the same container as the video element; we need the
+    // process canvas to sample the same pixel region that is actually displayed so that
+    // normalised positions (0-1) align between detection and drawing.
+    const cW = overlay.clientWidth  || overlay.width
+    const cH = overlay.clientHeight || overlay.height
+    const vW = video.videoWidth  || 1280
+    const vH = video.videoHeight || 720
+    const coverScale = Math.max(cW / vW, cH / vH)
+    const srcX = (vW - cW / coverScale) / 2
+    const srcY = (vH - cH / coverScale) / 2
+    const srcW = cW / coverScale
+    const srcH = cH / coverScale
+    processCtx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, PROCESS_W, PROCESS_H)
     const currentFrame = processCtx.getImageData(0, 0, PROCESS_W, PROCESS_H)
 
     if (prevFrameRef.current) {
@@ -151,7 +164,7 @@ export default function CameraView({ isTracking, countdownOverlay }: Props) {
             const dy = rawY - prev.y
             const dist = Math.sqrt(dx * dx + dy * dy)
             // Dampen large jumps — likely noise or hand interference
-            const alpha = dist > MAX_JUMP_DIST ? EMA_ALPHA * 0.25 : EMA_ALPHA
+            const alpha = dist > MAX_JUMP_DIST ? EMA_ALPHA * 0.5 : EMA_ALPHA
             sx = alpha * rawX + (1 - alpha) * prev.x
             sy = alpha * rawY + (1 - alpha) * prev.y
           }

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useTournamentStore } from '@/store/tournamentStore'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 function nextPowerOf2(n: number): number {
   let p = 1
@@ -27,16 +28,19 @@ export default function PlayersScreen() {
     players,
     addPlayer,
     updatePlayer,
+    setPlayerPhoto,
     removePlayer,
     reorderPlayers,
     importPlayers,
     initBracket,
+    clearPlayers,
     reset,
   } = useTournamentStore()
 
   const [newName, setNewName] = useState('')
   const [importText, setImportText] = useState('')
   const [showImport, setShowImport] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
@@ -112,7 +116,7 @@ export default function PlayersScreen() {
               {copied ? '已複製！' : '匯出'}
             </button>
             <button className="btn-ghost" onClick={reset}>
-              重設
+              重設賽事
             </button>
           </div>
         </div>
@@ -193,13 +197,13 @@ export default function PlayersScreen() {
                   ⠿
                 </span>
 
-                {/* Index badge */}
-                <span
-                  className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: '#1e293b', color: '#64748b' }}
-                >
-                  {i + 1}
-                </span>
+                {/* Avatar — click to upload / take photo */}
+                <PlayerAvatar
+                  player={player}
+                  size={36}
+                  editable
+                  onPhotoChange={(url) => setPlayerPhoto(player.id, url)}
+                />
 
                 {/* Editable name */}
                 <input
@@ -229,6 +233,58 @@ export default function PlayersScreen() {
             ))
           )}
         </div>
+
+        {/* Clear all — shown only when there are players */}
+        {players.length > 0 && (
+          <div className="mb-3">
+            {!showClearConfirm ? (
+              <button
+                className="btn-ghost w-full"
+                style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.25)' }}
+                onClick={() => setShowClearConfirm(true)}
+              >
+                全部清除
+              </button>
+            ) : (
+              <div
+                className="flex items-center justify-between rounded-xl px-4 py-3"
+                style={{
+                  backgroundColor: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.35)',
+                }}
+              >
+                <span className="text-sm text-red-400">確定清除所有 {players.length} 位選手？</span>
+                <div className="flex gap-2">
+                  <button
+                    className="btn-ghost"
+                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                    onClick={() => setShowClearConfirm(false)}
+                  >
+                    取消
+                  </button>
+                  <button
+                    style={{
+                      fontSize: '0.8rem',
+                      padding: '0.35rem 0.9rem',
+                      backgroundColor: '#ef4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                    }}
+                    onClick={() => {
+                      clearPlayers()
+                      setShowClearConfirm(false)
+                    }}
+                  >
+                    確定清除
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Add player row */}
         <div

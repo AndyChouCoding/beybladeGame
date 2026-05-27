@@ -1,6 +1,7 @@
 'use client'
 import { Match } from '@/types'
 import { useTournamentStore } from '@/store/tournamentStore'
+import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 interface Props {
   match: Match
@@ -34,20 +35,25 @@ export default function MatchCard({ match }: Props) {
         return (
           <div
             key={slot}
-            className="flex items-center justify-between px-3 py-2"
+            className="flex items-center gap-2 px-2 py-2"
             style={{
               backgroundColor: isWinner ? 'rgba(245,158,11,0.15)' : 'transparent',
               borderBottom: slot === 1 ? '1px solid #1e293b' : 'none',
               color: isLoser ? '#475569' : isWinner ? '#f59e0b' : '#f1f5f9',
             }}
           >
-            <span className="truncate max-w-[100px]">
+            {player ? (
+              <PlayerAvatar player={player} size={20} />
+            ) : (
+              <div style={{ width: 20, height: 20, flexShrink: 0 }} />
+            )}
+            <span className="truncate flex-1 text-xs">
               {player ? player.name : <span className="text-slate-600 italic">BYE</span>}
             </span>
             {match.status === 'completed' && player && (
-              <span className="font-bold text-xs ml-2">{score}</span>
+              <span className="font-bold text-xs">{score}</span>
             )}
-            {isWinner && <span className="text-xs ml-1">W</span>}
+            {isWinner && <span className="text-xs">W</span>}
           </div>
         )
       })}
