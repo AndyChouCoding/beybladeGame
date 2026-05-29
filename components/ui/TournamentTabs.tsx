@@ -238,7 +238,9 @@ export default function TournamentTabs() {
 
             {/* Name */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-400">組別名稱</label>
+              <label className="text-xs font-semibold text-slate-400">
+                組別名稱 <span style={{ color: '#ef4444' }}>*</span>
+              </label>
               <input
                 type="text"
                 placeholder="例：混合組 A"
@@ -246,6 +248,9 @@ export default function TournamentTabs() {
                 onChange={(e) => setMixedName(e.target.value)}
                 autoFocus
               />
+              {!mixedName.trim() && (
+                <p className="text-xs" style={{ color: '#94a3b8' }}>請輸入組別名稱才能建立</p>
+              )}
             </div>
 
             {/* Player picker */}
