@@ -1,9 +1,70 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Player, Bracket, Phase } from '@/types'
+import { Player, Bracket, Phase, TournamentState } from '@/types'
 import { generateBracket } from '@/utils/bracket'
 
+const INITIAL_ID = 't0'
+
+function makeId() {
+  return `t${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+}
+
+function defaultData(): Omit<TournamentState, 'id'> {
+  return {
+    tournamentName: '',
+    playerCount: 4,
+    players: [],
+    bracket: [],
+    currentRound: 0,
+    currentMatchIndex: 0,
+    phase: 'setup',
+    champion: null,
+  }
+}
+
+const INITIAL_TOURNAMENT: TournamentState = { id: INITIAL_ID, ...defaultData() }
+
+type FlatState = {
+  activeTournamentId: string
+  tournamentName: string
+  playerCount: number
+  players: Player[]
+  bracket: Bracket
+  currentRound: number
+  currentMatchIndex: number
+  phase: Phase
+  champion: Player | null
+}
+
+function snap(s: FlatState): TournamentState {
+  return {
+    id: s.activeTournamentId,
+    tournamentName: s.tournamentName,
+    playerCount: s.playerCount,
+    players: s.players,
+    bracket: s.bracket,
+    currentRound: s.currentRound,
+    currentMatchIndex: s.currentMatchIndex,
+    phase: s.phase,
+    champion: s.champion,
+  }
+}
+
+function flat(t: TournamentState): Omit<TournamentState, 'id'> {
+  return {
+    tournamentName: t.tournamentName,
+    playerCount: t.playerCount,
+    players: t.players,
+    bracket: t.bracket,
+    currentRound: t.currentRound,
+    currentMatchIndex: t.currentMatchIndex,
+    phase: t.phase,
+    champion: t.champion,
+  }
+}
+
 interface TournamentStore {
+  // Active tournament (flat)
   tournamentName: string
   playerCount: number
   players: Player[]
@@ -13,6 +74,11 @@ interface TournamentStore {
   phase: Phase
   champion: Player | null
 
+  // Multi-tournament
+  activeTournamentId: string
+  tournaments: Record<string, TournamentState>
+
+  // Existing actions
   setSetup: (name: string, count: number) => void
   setPlayers: (players: Player[]) => void
   initBracket: () => void
@@ -23,7 +89,6 @@ interface TournamentStore {
   goToBracket: () => void
   goToPlayers: () => void
   reset: () => void
-
   addPlayer: (name: string) => void
   updatePlayer: (id: string, name: string) => void
   setPlayerPhoto: (id: string, photoUrl: string) => void
@@ -31,27 +96,26 @@ interface TournamentStore {
   reorderPlayers: (fromIndex: number, toIndex: number) => void
   importPlayers: (names: string[]) => void
   clearPlayers: () => void
+
+  // Multi-tournament actions
+  createTournament: () => void
+  createMixedTournament: (name: string, players: Player[]) => void
+  switchTournament: (id: string) => void
+  deleteTournament: (id: string) => void
 }
 
 export const useTournamentStore = create<TournamentStore>()(
   persist(
     (set, get) => ({
-      tournamentName: '',
-      playerCount: 4,
-      players: [],
-      bracket: [],
-      currentRound: 0,
-      currentMatchIndex: 0,
-      phase: 'setup',
-      champion: null,
+      ...defaultData(),
+      activeTournamentId: INITIAL_ID,
+      tournaments: { [INITIAL_ID]: INITIAL_TOURNAMENT },
 
       setSetup: (name, count) =>
         set((state) => ({
           tournamentName: name,
           playerCount: count,
           phase: 'players',
-          // Reuse existing players if any; only auto-generate defaults when the list is empty.
-          // This lets the same roster carry over into a new tournament without re-entry.
           players:
             state.players.length > 0
               ? state.players
@@ -113,9 +177,6 @@ export const useTournamentStore = create<TournamentStore>()(
           match.winner = winner === 1 ? match.player1 : match.player2
           match.status = 'completed'
 
-          // Walk the winner forward through any BYE slots.
-          // Stop when we hit a real opponent (both players present),
-          // a pending peer (real match yet to be played), or the end of the bracket.
           let fromRound = currentRound
           let fromMatchIdx = currentMatchIndex
           let advancing = match.winner
@@ -125,23 +186,20 @@ export const useTournamentStore = create<TournamentStore>()(
             if (toRound >= newBracket.length) break
 
             const toMatchIdx = Math.floor(fromMatchIdx / 2)
-            const toSlot = fromMatchIdx % 2      // 0 → fills player1, 1 → fills player2
+            const toSlot = fromMatchIdx % 2
             const toMatch = newBracket[toRound][toMatchIdx]
 
-            // Place the advancing player
             if (toSlot === 0) {
               toMatch.player1 = advancing
             } else {
               toMatch.player2 = advancing
             }
 
-            // Check the peer feeding match in fromRound
             const peerIdx = toSlot === 0 ? toMatchIdx * 2 + 1 : toMatchIdx * 2
             const peer = newBracket[fromRound][peerIdx]
 
-            if (peer.status !== 'completed') break  // real opponent still coming
+            if (peer.status !== 'completed') break
 
-            // Peer is resolved — check whether toMatch is a BYE
             const { player1: p1, player2: p2 } = toMatch
             if (p1 !== null && p2 === null) {
               toMatch.winner = p1
@@ -156,11 +214,10 @@ export const useTournamentStore = create<TournamentStore>()(
               fromRound = toRound
               fromMatchIdx = toMatchIdx
             } else {
-              break  // real match (both slots filled) or both null — stop here
+              break
             }
           }
 
-          // Determine championship by inspecting the final round's single match
           const finalMatch = newBracket[newBracket.length - 1][0]
           const isChampion = finalMatch.status === 'completed' && finalMatch.winner !== null
 
@@ -235,8 +292,6 @@ export const useTournamentStore = create<TournamentStore>()(
 
       reset: () =>
         set((state) => ({
-          // Keep players so they can be reused in the next tournament.
-          // Use clearPlayers() to explicitly wipe the roster.
           players: state.players,
           tournamentName: '',
           playerCount: 4,
@@ -248,7 +303,84 @@ export const useTournamentStore = create<TournamentStore>()(
         })),
 
       clearPlayers: () => set({ players: [] }),
+
+      // ── Multi-tournament ──
+
+      createTournament: () =>
+        set((state) => {
+          const newId = makeId()
+          const snapshot = snap(state)
+          const data = defaultData()
+          const newT: TournamentState = { id: newId, ...data }
+          return {
+            tournaments: {
+              ...state.tournaments,
+              [state.activeTournamentId]: snapshot,
+              [newId]: newT,
+            },
+            activeTournamentId: newId,
+            ...data,
+          }
+        }),
+
+      createMixedTournament: (name, players) =>
+        set((state) => {
+          const newId = makeId()
+          const snapshot = snap(state)
+          const newT: TournamentState = {
+            id: newId,
+            tournamentName: name,
+            playerCount: players.length,
+            players,
+            bracket: [],
+            currentRound: 0,
+            currentMatchIndex: 0,
+            phase: 'players',
+            champion: null,
+          }
+          return {
+            tournaments: {
+              ...state.tournaments,
+              [state.activeTournamentId]: snapshot,
+              [newId]: newT,
+            },
+            activeTournamentId: newId,
+            ...flat(newT),
+          }
+        }),
+
+      switchTournament: (id) =>
+        set((state) => {
+          if (id === state.activeTournamentId) return {}
+          const snapshot = snap(state)
+          const target = state.tournaments[id]
+          return {
+            tournaments: { ...state.tournaments, [state.activeTournamentId]: snapshot },
+            activeTournamentId: id,
+            ...flat(target),
+          }
+        }),
+
+      deleteTournament: (id) =>
+        set((state) => {
+          const ids = Object.keys(state.tournaments)
+          if (ids.length <= 1) return {}
+
+          const next = { ...state.tournaments }
+          delete next[id]
+
+          if (id !== state.activeTournamentId) {
+            return { tournaments: next }
+          }
+
+          const nextId = Object.keys(next)[0]
+          return {
+            tournaments: next,
+            activeTournamentId: nextId,
+            ...flat(next[nextId]),
+          }
+        }),
     }),
-    { name: 'gyro-battle-store' }
+    { name: 'gyro-battle-store-v2' }
   )
 )

@@ -40,6 +40,12 @@ body {
   transform: translateY(0);
 }
 
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-ghost {
   background: transparent;
   color: #94a3b8;
