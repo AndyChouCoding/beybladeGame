@@ -152,7 +152,7 @@ export default function MatchScreen() {
   )
 
   return (
-    <div className="relative flex flex-col h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="relative flex flex-col h-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* ── Header ── */}
       <header
         className="flex items-center justify-between px-4 py-2 flex-shrink-0"
