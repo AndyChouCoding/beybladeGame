@@ -21,6 +21,11 @@
 - MatchScreen outer wrapper changed from `h-screen` to `h-full` so it fills the remaining
   viewport height correctly when the tab bar is present.
 
+### Fixed
+- Move add-tab dropdown outside the `overflow-x` scroll container so it renders without clipping.
+- Show disabled state on `btn-primary` when the form is invalid and display a hint on the empty
+  tournament name field in the mixed-group modal.
+
 ## [v1.2.1] - 2026-05-27
 
 ### Fixed
