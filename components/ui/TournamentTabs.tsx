@@ -86,67 +86,73 @@ export default function TournamentTabs() {
 
   return (
     <>
-      {/* ── Tab bar ── */}
+      {/* ── Tab bar ──
+          Outer wrapper has NO overflow so the dropdown can escape downward.
+          Only the inner tab strip gets overflow-x: auto.
+      */}
       <div
-        className="flex items-stretch flex-shrink-0 overflow-x-auto"
+        className="flex items-stretch flex-shrink-0"
         style={{ backgroundColor: '#0a0a14', borderBottom: '1px solid #1e293b', minHeight: 40 }}
       >
-        {tabs.map((tab) => {
-          const isActive = tab.id === activeTournamentId
-          return (
-            <button
-              key={tab.id}
-              onClick={() => switchTournament(tab.id)}
-              className="flex items-center gap-1.5 px-3 flex-shrink-0"
-              style={{
-                color: isActive ? '#f1f5f9' : '#64748b',
-                backgroundColor: isActive ? 'var(--bg-primary)' : 'transparent',
-                borderRight: '1px solid #1e293b',
-                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
-                fontSize: '0.75rem',
-                fontWeight: isActive ? 700 : 400,
-                cursor: 'pointer',
-                outline: 'none',
-                transition: 'color 0.15s, background-color 0.15s',
-                minWidth: 0,
-              }}
-            >
-              <span
+        {/* Scrollable tab strip */}
+        <div className="flex items-stretch overflow-x-auto flex-1 min-w-0">
+          {tabs.map((tab) => {
+            const isActive = tab.id === activeTournamentId
+            return (
+              <button
+                key={tab.id}
+                onClick={() => switchTournament(tab.id)}
+                className="flex items-center gap-1.5 px-3 flex-shrink-0"
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: PHASE_DOT[tab.phase] ?? '#475569',
-                  flexShrink: 0,
-                  display: 'block',
-                  ...(tab.phase === 'match' ? { boxShadow: `0 0 5px ${PHASE_DOT.match}` } : {}),
+                  color: isActive ? '#f1f5f9' : '#64748b',
+                  backgroundColor: isActive ? 'var(--bg-primary)' : 'transparent',
+                  borderRight: '1px solid #1e293b',
+                  borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                  fontSize: '0.75rem',
+                  fontWeight: isActive ? 700 : 400,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'color 0.15s, background-color 0.15s',
+                  minWidth: 0,
                 }}
-              />
-              <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {tab.name}
-              </span>
-              {canDelete && (
+              >
                 <span
-                  role="button"
-                  onClick={(e) => { e.stopPropagation(); deleteTournament(tab.id) }}
-                  className="flex-shrink-0 text-slate-600 hover:text-red-400 transition-colors"
-                  style={{ fontSize: '1rem', lineHeight: 1, padding: '0 2px', cursor: 'pointer' }}
-                >
-                  ×
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: PHASE_DOT[tab.phase] ?? '#475569',
+                    flexShrink: 0,
+                    display: 'block',
+                    ...(tab.phase === 'match' ? { boxShadow: `0 0 5px ${PHASE_DOT.match}` } : {}),
+                  }}
+                />
+                <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {tab.name}
                 </span>
-              )}
-            </button>
-          )
-        })}
+                {canDelete && (
+                  <span
+                    role="button"
+                    onClick={(e) => { e.stopPropagation(); deleteTournament(tab.id) }}
+                    className="flex-shrink-0 text-slate-600 hover:text-red-400 transition-colors"
+                    style={{ fontSize: '1rem', lineHeight: 1, padding: '0 2px', cursor: 'pointer' }}
+                  >
+                    ×
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
 
-        {/* Add button */}
-        <div className="relative flex items-center">
+        {/* Add button — outside overflow-x container so the dropdown is not clipped */}
+        <div className="relative flex items-center flex-shrink-0">
           <button
             onClick={() => setShowMenu((v) => !v)}
             style={{
               background: 'none',
               border: 'none',
-              borderRight: '1px solid #1e293b',
+              borderLeft: '1px solid #1e293b',
               color: '#475569',
               fontSize: '0.75rem',
               cursor: 'pointer',
@@ -165,7 +171,7 @@ export default function TournamentTabs() {
             <>
               <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
               <div
-                className="absolute top-full left-0 z-20 rounded-xl overflow-hidden"
+                className="absolute top-full right-0 z-20 rounded-xl overflow-hidden"
                 style={{
                   backgroundColor: '#1a2236',
                   border: '1px solid #334155',
