@@ -19,3 +19,15 @@ export interface Match {
 export type Bracket = Match[][]
 
 export type Phase = 'setup' | 'players' | 'bracket' | 'match' | 'champion'
+
+export interface TournamentState {
+  id: string
+  tournamentName: string
+  playerCount: number
+  players: Player[]
+  bracket: Bracket
+  currentRound: number
+  currentMatchIndex: number
+  phase: Phase
+  champion: Player | null
+}

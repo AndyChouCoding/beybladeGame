@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [v1.3.0] - 2026-05-29
+
+### Added
+- Multi-tournament tab bar: run multiple simultaneous tournaments side-by-side in one session.
+  - A horizontal tab strip is pinned above all screens; each tab shows a phase-colour dot
+    (gray=setup, blue=players, amber=bracket, green=match, gold=champion) and the tournament name.
+  - "+ 新增組別" button opens a dropdown with two options:
+    - **全新組別** — creates a fresh tournament (setup phase).
+    - **混合組…** — opens a modal to name the group and cherry-pick players from any existing
+      tournament; the new tab opens directly at the players screen with the chosen roster.
+  - × close button on each tab deletes that tournament (disabled when only one tab remains).
+  - Switching tabs snapshots the current tournament state, then restores the target — all tabs
+    persist across page reloads via `gyro-battle-store-v2` in localStorage.
+- `TournamentState` type added to `types/index.ts`.
+- `createTournament`, `createMixedTournament`, `switchTournament`, `deleteTournament` actions
+  added to `tournamentStore`; all existing actions unchanged.
+- MatchScreen outer wrapper changed from `h-screen` to `h-full` so it fills the remaining
+  viewport height correctly when the tab bar is present.
+
 ## [v1.2.1] - 2026-05-27
 
 ### Fixed
