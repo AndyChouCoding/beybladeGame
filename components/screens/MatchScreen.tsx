@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useTournamentStore } from '@/store/tournamentStore'
 import CameraView from '@/components/match/CameraView'
 import Scoreboard from '@/components/match/Scoreboard'
@@ -59,10 +59,9 @@ function EditPlayersModal({
   )
 }
 
-const COUNTDOWN_STEPS = ['3', '2', '1', 'GO SHOOT']
 const WIN_SCORE = 4
 
-type MatchPhase = 'idle' | 'countdown' | 'active' | 'finished'
+type MatchPhase = 'idle' | 'active' | 'finished'
 
 export default function MatchScreen() {
   const { bracket, currentRound, currentMatchIndex, addScore, removeScore, completeMatch, updatePlayer } =
@@ -71,8 +70,6 @@ export default function MatchScreen() {
   const match = bracket[currentRound]?.[currentMatchIndex]
   const [phase, setPhase] = useState<MatchPhase>('idle')
   const [showEditPlayers, setShowEditPlayers] = useState(false)
-  const [countdownText, setCountdownText] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   const score1 = match?.score1 ?? 0
   const score2 = match?.score2 ?? 0
@@ -101,28 +98,6 @@ export default function MatchScreen() {
     removeScore(player)
   }
 
-  const startCountdown = () => {
-    setPhase('countdown')
-    let step = 0
-    const tick = () => {
-      if (step >= COUNTDOWN_STEPS.length) {
-        setCountdownText(null)
-        setPhase('active')
-        return
-      }
-      setCountdownText(COUNTDOWN_STEPS[step])
-      step++
-      timerRef.current = setTimeout(tick, 1000)
-    }
-    tick()
-  }
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [])
-
   const goBack = useTournamentStore((s) => s.goToBracket)
 
   if (!match || !match.player1 || !match.player2) return null
@@ -134,13 +109,10 @@ export default function MatchScreen() {
         <button
           className="btn-primary"
           style={{ fontSize: '1rem', padding: '0.75rem 2.5rem', letterSpacing: '0.05em' }}
-          onClick={startCountdown}
+          onClick={() => setPhase('active')}
         >
           比賽開始
         </button>
-      )}
-      {phase === 'countdown' && (
-        <span className="text-slate-400 text-sm animate-pulse">準備中...</span>
       )}
       {phase === 'active' && (
         <span className="text-xs text-slate-600">點擊計分板加分</span>
@@ -175,7 +147,6 @@ export default function MatchScreen() {
         </div>
         <span className="text-xs text-slate-500 flex-shrink-0">
           {phase === 'idle'      && '等待開始'}
-          {phase === 'countdown' && '倒數中...'}
           {phase === 'active'    && '比賽進行中'}
           {phase === 'finished'  && '比賽結束'}
         </span>
@@ -190,10 +161,7 @@ export default function MatchScreen() {
         {/* Camera area */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 p-2 md:p-3 overflow-hidden">
-            <CameraView
-              countdownOverlay={phase === 'countdown' ? countdownText : null}
-              active={phase === 'active'}
-            />
+            <CameraView active={phase === 'active'} />
           </div>
 
           {/* Desktop phase controls (below camera) */}

@@ -4,11 +4,10 @@ import TrajectoryOverlay from './TrajectoryOverlay'
 import { GyroTracker, PROCESS_W, PROCESS_H, NormalizedPoint } from '@/utils/gyroTracker'
 
 interface Props {
-  countdownOverlay: string | null
   active: boolean
 }
 
-export default function CameraView({ countdownOverlay, active }: Props) {
+export default function CameraView({ active }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const processRef = useRef<HTMLCanvasElement>(null)
@@ -111,30 +110,6 @@ export default function CameraView({ countdownOverlay, active }: Props) {
       <canvas ref={processRef} width={PROCESS_W} height={PROCESS_H} className="hidden" />
 
       <TrajectoryOverlay targetsRef={targetsRef} active={active} />
-
-      {countdownOverlay && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <span
-            className="font-black select-none"
-            style={{
-              fontSize: countdownOverlay === 'GO SHOOT' ? '6vw' : '12vw',
-              color: countdownOverlay === 'GO SHOOT' ? '#f59e0b' : '#ffffff',
-              textShadow: '0 4px 24px rgba(0,0,0,0.8)',
-              letterSpacing: countdownOverlay === 'GO SHOOT' ? '0.05em' : 'normal',
-              animation: 'pulse 0.4s ease-out',
-            }}
-          >
-            {countdownOverlay}
-          </span>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes pulse {
-          from { transform: scale(1.3); opacity: 0.6; }
-          to   { transform: scale(1);   opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }
