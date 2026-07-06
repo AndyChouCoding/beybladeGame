@@ -25,6 +25,10 @@
   - Tracker resets fresh at the start of every match; detection only runs during the
     `active` phase.
 
+### Removed
+- The pre-match 3-2-1 / GO SHOOT countdown. Pressing "比賽開始" now goes straight into the
+  active scoring phase.
+
 ## [v1.3.0] - 2026-05-29
 
 ### Added
