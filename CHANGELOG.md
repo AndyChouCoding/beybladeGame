@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-07-06
+
 ### Added
 - Gyro trajectory overlay is back, rebuilt on three.js (via `@react-three/fiber` +
   `@react-three/drei`) instead of the old canvas-2D version, and now tracks **both** gyros
