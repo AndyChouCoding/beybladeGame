@@ -95,6 +95,7 @@ interface TournamentStore {
   removePlayer: (id: string) => void
   reorderPlayers: (fromIndex: number, toIndex: number) => void
   importPlayers: (names: string[]) => void
+  importPlayersFromSheet: (entries: { name: string; photoUrl?: string }[]) => void
   clearPlayers: () => void
 
   // Multi-tournament actions
@@ -287,6 +288,15 @@ export const useTournamentStore = create<TournamentStore>()(
           players: names.map((name, i) => ({
             id: `p${Date.now()}_${i}`,
             name,
+          })),
+        }),
+
+      importPlayersFromSheet: (entries) =>
+        set({
+          players: entries.map((entry, i) => ({
+            id: `p${Date.now()}_${i}`,
+            name: entry.name,
+            photoUrl: entry.photoUrl,
           })),
         }),
 

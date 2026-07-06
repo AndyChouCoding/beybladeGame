@@ -24,6 +24,17 @@
     toward the tail rather than tapering to a point or staying flat-opacity.
   - Tracker resets fresh at the start of every match; detection only runs during the
     `active` phase.
+- Google Sheet import for player rosters, alongside the existing plain-text importer.
+  - `PlayersScreen`'s import panel gains a mode toggle: "貼上名單" (existing) and "Google
+    Sheet" (new) — paste a Sheet's "Publish to web" CSV link; A column = name, B column =
+    photo URL (optional).
+  - Parsed with `papaparse`; rows are read straight into the roster via a new
+    `importPlayersFromSheet` store action.
+  - Photo URLs from the sheet are stored and used as-is (no download/re-encoding), matching
+    how the app already treats externally-sourced links.
+  - Optional default-image picker in the same panel (uploaded from device, converted to a
+    data URL like the existing avatar upload flow) — applied only to rows whose photo URL
+    cell is empty; if no default is set, those rows are left without a photo as before.
 
 ### Removed
 - The pre-match 3-2-1 / GO SHOOT countdown. Pressing "比賽開始" now goes straight into the
