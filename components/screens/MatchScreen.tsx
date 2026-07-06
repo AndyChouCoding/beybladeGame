@@ -192,6 +192,7 @@ export default function MatchScreen() {
           <div className="flex-1 min-h-0 p-2 md:p-3 overflow-hidden">
             <CameraView
               countdownOverlay={phase === 'countdown' ? countdownText : null}
+              active={phase === 'active'}
             />
           </div>
 
