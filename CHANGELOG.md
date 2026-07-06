@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-07-06
+
+### Added
+- Gyro trajectory overlay is back, rebuilt on three.js (via `@react-three/fiber` +
+  `@react-three/drei`) instead of the old canvas-2D version, and now tracks **both** gyros
+  at once instead of one.
+  - Detection (`utils/gyroTracker.ts`) buckets frame-to-frame motion within a centered ROI
+    (70% of the frame, filtering out crowd/hand motion near the arena edges) into a coarse
+    grid, then picks the two densest, sufficiently-separated peaks as the two gyros. No
+    manual setup/calibration step needed.
+    - Each peak is EMA-smoothed independently with large-jump damping for stability.
+    - Frame-to-frame identity (which trail is which gyro) is preserved by nearest-neighbor
+      matching against the previous frame's positions, so the two trails don't swap or
+      flicker when the gyros' paths cross.
+  - `components/match/TrajectoryOverlay.tsx` renders two independently-colored streaks
+    (amber + cyan) over the live video via a pixel-mapped orthographic R3F canvas, styled
+    after a lens-flare light-trail look (ref: HelloEnjoy's "Lights" three.js experience):
+    a sparkle/starburst head (8-point radiating glow sprite) trailing a thin, near
+    constant-width bright core streak plus a wider, dimmer halo streak behind it — both
+    built on drei `<Trail>` with their underlying `MeshLineMaterial` patched to additive
+    blending + a canvas-generated alpha gradient, so they dissipate into transparency
+    toward the tail rather than tapering to a point or staying flat-opacity.
+  - Tracker resets fresh at the start of every match; detection only runs during the
+    `active` phase.
+- Google Sheet import for player rosters, alongside the existing plain-text importer.
+  - `PlayersScreen`'s import panel gains a mode toggle: "貼上名單" (existing) and "Google
+    Sheet" (new) — paste a Sheet's "Publish to web" CSV link; A column = name, B column =
+    photo URL (optional).
+  - Parsed with `papaparse`; rows are read straight into the roster via a new
+    `importPlayersFromSheet` store action.
+  - Photo URLs from the sheet are stored and used as-is (no download/re-encoding), matching
+    how the app already treats externally-sourced links.
+  - Optional default-image picker in the same panel (uploaded from device, converted to a
+    data URL like the existing avatar upload flow) — applied only to rows whose photo URL
+    cell is empty; if no default is set, those rows are left without a photo as before.
+
+### Removed
+- The pre-match 3-2-1 / GO SHOOT countdown. Pressing "比賽開始" now goes straight into the
+  active scoring phase.
+
 ## [v1.3.0] - 2026-05-29
 
 ### Added

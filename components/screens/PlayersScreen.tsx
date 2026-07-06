@@ -1,7 +1,9 @@
 'use client'
 import { useState, useRef } from 'react'
+import Papa from 'papaparse'
 import { useTournamentStore } from '@/store/tournamentStore'
 import PlayerAvatar from '@/components/ui/PlayerAvatar'
+import { resizeImageToDataURL } from '@/utils/image'
 
 function nextPowerOf2(n: number): number {
   let p = 1
@@ -32,6 +34,7 @@ export default function PlayersScreen() {
     removePlayer,
     reorderPlayers,
     importPlayers,
+    importPlayersFromSheet,
     initBracket,
     clearPlayers,
     reset,
@@ -40,11 +43,25 @@ export default function PlayersScreen() {
   const [newName, setNewName] = useState('')
   const [importText, setImportText] = useState('')
   const [showImport, setShowImport] = useState(false)
+  const [importMode, setImportMode] = useState<'text' | 'sheet'>('text')
+  const [sheetUrl, setSheetUrl] = useState('')
+  const [sheetLoading, setSheetLoading] = useState(false)
+  const [sheetError, setSheetError] = useState<string | null>(null)
+  const [defaultPhotoUrl, setDefaultPhotoUrl] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
   const newNameRef = useRef<HTMLInputElement>(null)
+  const defaultPhotoInputRef = useRef<HTMLInputElement>(null)
+
+  const closeImportPanel = () => {
+    setShowImport(false)
+    setImportText('')
+    setSheetUrl('')
+    setSheetError(null)
+    setDefaultPhotoUrl(null)
+  }
 
   const handleAddPlayer = () => {
     const trimmed = newName.trim()
@@ -63,6 +80,48 @@ export default function PlayersScreen() {
     importPlayers(names)
     setImportText('')
     setShowImport(false)
+  }
+
+  const handleDefaultPhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const url = await resizeImageToDataURL(file, 200, 0.75)
+      setDefaultPhotoUrl(url)
+    } catch {
+      // silently ignore
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  const handleSheetImport = async () => {
+    const trimmedUrl = sheetUrl.trim()
+    if (!trimmedUrl) return
+    setSheetError(null)
+    setSheetLoading(true)
+    try {
+      const res = await fetch(trimmedUrl)
+      if (!res.ok) throw new Error(`無法讀取連結（HTTP ${res.status}）`)
+      const csvText = await res.text()
+      const { data } = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: true })
+      const entries = data
+        .slice(1) // skip header row
+        .map((row) => ({
+          name: (row[0] ?? '').trim(),
+          photoUrl: (row[1] ?? '').trim() || defaultPhotoUrl || undefined,
+        }))
+        .filter((entry) => entry.name)
+
+      if (entries.length === 0) throw new Error('沒有解析到任何選手資料，請確認欄位格式')
+
+      importPlayersFromSheet(entries)
+      closeImportPanel()
+    } catch (err) {
+      setSheetError(err instanceof Error ? err.message : '匯入失敗，請確認連結是否正確')
+    } finally {
+      setSheetLoading(false)
+    }
   }
 
   const handleExport = async () => {
@@ -127,36 +186,156 @@ export default function PlayersScreen() {
             className="rounded-xl p-4 mb-4"
             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid #334155' }}
           >
-            <p className="text-xs text-slate-400 mb-2">貼上選手名單（每行一位）：</p>
-            <textarea
-              rows={5}
-              placeholder={'張小明\n李大華\n王美玲\n...'}
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              autoFocus
-              style={{
-                width: '100%',
-                background: '#1e293b',
-                border: '1px solid #334155',
-                borderRadius: '0.5rem',
-                padding: '0.625rem 1rem',
-                color: '#f1f5f9',
-                fontSize: '0.875rem',
-                outline: 'none',
-                resize: 'vertical',
-              }}
-            />
-            <div className="flex gap-2 mt-3">
-              <button className="btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={handleImport}>
-                匯入名單
+            <div className="flex gap-2 mb-3">
+              <button
+                className="btn-ghost"
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.35rem 0.75rem',
+                  ...(importMode === 'text'
+                    ? { color: 'var(--accent)', borderColor: 'var(--accent)' }
+                    : {}),
+                }}
+                onClick={() => setImportMode('text')}
+              >
+                貼上名單
               </button>
               <button
                 className="btn-ghost"
-                onClick={() => { setShowImport(false); setImportText('') }}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.35rem 0.75rem',
+                  ...(importMode === 'sheet'
+                    ? { color: 'var(--accent)', borderColor: 'var(--accent)' }
+                    : {}),
+                }}
+                onClick={() => setImportMode('sheet')}
               >
-                取消
+                Google Sheet
               </button>
             </div>
+
+            {importMode === 'text' ? (
+              <>
+                <p className="text-xs text-slate-400 mb-2">貼上選手名單（每行一位）：</p>
+                <textarea
+                  rows={5}
+                  placeholder={'張小明\n李大華\n王美玲\n...'}
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '0.5rem',
+                    padding: '0.625rem 1rem',
+                    color: '#f1f5f9',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    resize: 'vertical',
+                  }}
+                />
+                <div className="flex gap-2 mt-3">
+                  <button className="btn-primary" style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} onClick={handleImport}>
+                    匯入名單
+                  </button>
+                  <button className="btn-ghost" onClick={closeImportPanel}>
+                    取消
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-slate-400 mb-2">
+                  貼上 Google Sheet 發布的 CSV 連結（A 欄＝姓名，B 欄＝圖片網址，選填）：
+                </p>
+                <input
+                  type="text"
+                  placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+                  value={sheetUrl}
+                  onChange={(e) => setSheetUrl(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    background: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '0.5rem',
+                    padding: '0.625rem 1rem',
+                    color: '#f1f5f9',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                  }}
+                />
+
+                <div className="flex items-center gap-3 mt-3">
+                  <div
+                    onClick={() => defaultPhotoInputRef.current?.click()}
+                    role="button"
+                    tabIndex={0}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      backgroundColor: '#1e293b',
+                      border: '1px dashed #475569',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {defaultPhotoUrl ? (
+                      <img
+                        src={defaultPhotoUrl}
+                        alt="預設圖片"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span style={{ color: '#64748b', fontSize: '1rem' }}>+</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-400 flex-1">
+                    預設圖片（選填）— Sheet 中沒填圖片網址的選手會套用這張
+                  </span>
+                  {defaultPhotoUrl && (
+                    <button
+                      onClick={() => setDefaultPhotoUrl(null)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '0.75rem' }}
+                    >
+                      清除
+                    </button>
+                  )}
+                  <input
+                    ref={defaultPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleDefaultPhotoFile}
+                  />
+                </div>
+
+                {sheetError && (
+                  <p className="text-xs text-red-400 mt-3">{sheetError}</p>
+                )}
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: '0.875rem', padding: '0.5rem 1.25rem' }}
+                    onClick={handleSheetImport}
+                    disabled={sheetLoading || !sheetUrl.trim()}
+                  >
+                    {sheetLoading ? '匯入中...' : '匯入名單'}
+                  </button>
+                  <button className="btn-ghost" onClick={closeImportPanel}>
+                    取消
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
