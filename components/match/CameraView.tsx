@@ -1,6 +1,5 @@
 'use client'
 import { useRef, useEffect, useState, useCallback } from 'react'
-import TrajectoryOverlay from './TrajectoryOverlay'
 import { GyroTracker, PROCESS_W, PROCESS_H, NormalizedPoint } from '@/utils/gyroTracker'
 
 interface Props {
@@ -109,7 +108,9 @@ export default function CameraView({ active }: Props) {
       {/* Hidden downsampled canvas used for motion detection — never rendered to the user */}
       <canvas ref={processRef} width={PROCESS_W} height={PROCESS_H} className="hidden" />
 
-      <TrajectoryOverlay targetsRef={targetsRef} active={active} />
+      {/* TrajectoryOverlay disabled: tracking artifacts made trails unreliable in live use.
+          Detection loop above is left running so the overlay can be re-enabled by
+          re-adding <TrajectoryOverlay targetsRef={targetsRef} active={active} /> here. */}
     </div>
   )
 }
