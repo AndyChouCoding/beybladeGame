@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+### Removed
+- Trajectory overlay is disabled (screen-only) — the two-gyro trails from v1.4.0 proved
+  unreliable in live use. `CameraView` no longer renders `TrajectoryOverlay`; the detection
+  loop and `gyroTracker.ts`/`TrajectoryOverlay.tsx` are left in place for future rework.
 
 ## [v1.4.0] - 2026-07-06
 
