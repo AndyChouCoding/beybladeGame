@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [v1.4.1] - 2026-07-17
 ### Removed
 - Trajectory overlay is disabled (screen-only) — the two-gyro trails from v1.4.0 proved
   unreliable in live use. `CameraView` no longer renders `TrajectoryOverlay`; the detection
