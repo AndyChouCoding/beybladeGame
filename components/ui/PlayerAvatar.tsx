@@ -28,6 +28,7 @@ export default function PlayerAvatar({ player, size = 32, editable = false, onPh
   const cameraRef = useRef<HTMLInputElement>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -84,11 +85,12 @@ export default function PlayerAvatar({ player, size = 32, editable = false, onPh
     >
       {loading ? (
         <span style={{ fontSize: fontSize * 0.7, color: '#0f0f1a' }}>⏳</span>
-      ) : player.photoUrl ? (
+      ) : player.photoUrl && !imgError ? (
         <img
           src={player.photoUrl}
           alt={player.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          onError={() => setImgError(true)}
         />
       ) : (
         <span style={{ color: '#0f0f1a', fontWeight: 800, fontSize, lineHeight: 1 }}>

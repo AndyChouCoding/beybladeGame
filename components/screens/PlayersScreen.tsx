@@ -5,6 +5,17 @@ import { useTournamentStore } from '@/store/tournamentStore'
 import PlayerAvatar from '@/components/ui/PlayerAvatar'
 import { resizeImageToDataURL } from '@/utils/image'
 
+function normalizeDriveUrl(url: string): string {
+  if (!url) return url
+  const fileMatch = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/)
+  if (fileMatch) return `https://drive.google.com/thumbnail?id=${fileMatch[1]}&sz=w400`
+  const openMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/)
+  if (openMatch) return `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w400`
+  const ucMatch = url.match(/drive\.google\.com\/uc\?.*[?&]id=([^&]+)/)
+  if (ucMatch) return `https://drive.google.com/thumbnail?id=${ucMatch[1]}&sz=w400`
+  return url
+}
+
 function nextPowerOf2(n: number): number {
   let p = 1
   while (p < n) p *= 2
@@ -104,12 +115,16 @@ export default function PlayersScreen() {
       const res = await fetch(trimmedUrl)
       if (!res.ok) throw new Error(`無法讀取連結（HTTP ${res.status}）`)
       const csvText = await res.text()
-      const { data } = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: true })
+      const trimmed = csvText.trim()
+      if (trimmed.startsWith('<') || trimmed.startsWith('<!')) {
+        throw new Error('連結回傳的是網頁內容，請使用「發佈到網路」的 CSV 連結，而非試算表編輯頁面的網址')
+      }
+      const { data } = Papa.parse<string[]>(trimmed, { skipEmptyLines: true })
       const entries = data
         .slice(1) // skip header row
         .map((row) => ({
           name: (row[0] ?? '').trim(),
-          photoUrl: (row[1] ?? '').trim() || defaultPhotoUrl || undefined,
+          photoUrl: normalizeDriveUrl((row[1] ?? '').trim()) || defaultPhotoUrl || undefined,
         }))
         .filter((entry) => entry.name)
 
