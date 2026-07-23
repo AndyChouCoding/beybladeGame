@@ -1,7 +1,8 @@
 'use client'
 import { useRef, useLayoutEffect, useState } from 'react'
-import { Bracket } from '@/types'
+import { Bracket, Match } from '@/types'
 import MatchCard from './MatchCard'
+import ThirdPlaceCard from './ThirdPlaceCard'
 import { getRoundName } from '@/utils/bracket'
 
 interface Line {
@@ -13,11 +14,12 @@ interface Line {
 
 interface Props {
   bracket: Bracket
+  thirdPlaceMatch?: Match | null
 }
 
 const SLOT_HEIGHT = 88
 
-export default function BracketView({ bracket }: Props) {
+export default function BracketView({ bracket, thirdPlaceMatch = null }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const matchRefs = useRef<(HTMLDivElement | null)[][]>(
     bracket.map((r) => Array(r.length).fill(null))
@@ -26,6 +28,8 @@ export default function BracketView({ bracket }: Props) {
 
   const totalSlots = (bracket[0]?.length ?? 1) * 2
   const containerHeight = Math.max(totalSlots * SLOT_HEIGHT, 300)
+  const finalRoundIndex = bracket.length - 1
+  const finalLocked = !!thirdPlaceMatch && thirdPlaceMatch.status !== 'completed'
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -99,12 +103,23 @@ export default function BracketView({ bracket }: Props) {
                   matchRefs.current[r][m] = el
                 }}
               >
-                <MatchCard match={match} />
+                <MatchCard match={match} locked={r === finalRoundIndex && finalLocked} />
               </div>
             ))}
           </div>
         </div>
       ))}
+
+      {thirdPlaceMatch && (
+        <div
+          className="flex flex-col justify-around flex-shrink-0"
+          style={{ minHeight: containerHeight }}
+        >
+          <div className="flex flex-col justify-around h-full gap-2">
+            <ThirdPlaceCard match={thirdPlaceMatch} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

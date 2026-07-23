@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- 3rd/4th place playoff before the championship match: once both semifinals are resolved,
+  their losers face off in a new "季軍賽" bracket slot, and the final match locks (with
+  "請先完成季軍賽") until that playoff is completed.
+  - Byes are handled explicitly: if a semifinal was a walkover, the playoff card shows
+    "名額不足，無法舉行季軍賽" with a confirm action instead of forcing an unplayable match.
+  - `TournamentState` gains `thirdPlaceMatch`, `runnerUp`, `thirdPlace`; the store adds
+    `startThirdPlaceMatch`/`resolveThirdPlaceBye` actions.
+- Podium-style results screen: `ChampionScreen` now shows 冠軍/亞軍/季軍 side by side
+  (gold/silver/bronze rings + stands) instead of just the champion. Tournaments with no
+  semifinal round (e.g. 2 players) simply omit the 3rd-place stand.
 
 ## [v1.4.1] - 2026-07-17
 ### Removed

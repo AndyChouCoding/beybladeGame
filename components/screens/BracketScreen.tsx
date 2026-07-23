@@ -3,7 +3,7 @@ import { useTournamentStore } from '@/store/tournamentStore'
 import BracketView from '@/components/bracket/BracketView'
 
 export default function BracketScreen() {
-  const { tournamentName, bracket, reset, goToPlayers } = useTournamentStore()
+  const { tournamentName, bracket, thirdPlaceMatch, reset, goToPlayers } = useTournamentStore()
 
   const totalRounds = bracket.length
   const completedMatches = bracket.flat().filter((m) => m.status === 'completed').length
@@ -40,8 +40,11 @@ export default function BracketScreen() {
               {getRoundLabel(r, totalRounds)}
             </div>
           ))}
+          {thirdPlaceMatch && (
+            <div className="flex-shrink-0 w-40 text-center">季軍賽</div>
+          )}
         </div>
-        <BracketView bracket={bracket} />
+        <BracketView bracket={bracket} thirdPlaceMatch={thirdPlaceMatch} />
       </div>
     </div>
   )
