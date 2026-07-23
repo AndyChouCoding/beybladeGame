@@ -5,19 +5,15 @@ import PlayerAvatar from '@/components/ui/PlayerAvatar'
 
 interface Props {
   match: Match
-  /** True when this match can't be started yet (e.g. 3rd/4th place match not resolved) */
-  locked?: boolean
 }
 
-export default function MatchCard({ match, locked = false }: Props) {
-  const startMatch = useTournamentStore((s) => s.startMatch)
-  const isReady =
-    match.status === 'pending' &&
-    match.player1 !== null &&
-    match.player2 !== null
-  const canStart = isReady && !locked
+export default function ThirdPlaceCard({ match }: Props) {
+  const startThirdPlaceMatch = useTournamentStore((s) => s.startThirdPlaceMatch)
+  const resolveThirdPlaceBye = useTournamentStore((s) => s.resolveThirdPlaceBye)
 
-  const isBye = match.status === 'completed' && (match.player1 === null || match.player2 === null)
+  const isBye = match.player1 === null || match.player2 === null
+  const canStart = match.status === 'pending' && !isBye
+  const needsByeConfirm = match.status === 'pending' && isBye
 
   return (
     <div
@@ -26,7 +22,6 @@ export default function MatchCard({ match, locked = false }: Props) {
         backgroundColor: 'var(--bg-card)',
         border: `1px solid ${match.status === 'active' ? 'var(--accent)' : '#1e293b'}`,
         minWidth: '160px',
-        opacity: isBye ? 0.5 : 1,
       }}
     >
       {[1, 2].map((slot) => {
@@ -40,9 +35,9 @@ export default function MatchCard({ match, locked = false }: Props) {
             key={slot}
             className="flex items-center gap-2 px-2 py-2"
             style={{
-              backgroundColor: isWinner ? 'rgba(245,158,11,0.15)' : 'transparent',
+              backgroundColor: isWinner ? 'rgba(180,83,9,0.15)' : 'transparent',
               borderBottom: slot === 1 ? '1px solid #1e293b' : 'none',
-              color: isLoser ? '#475569' : isWinner ? '#f59e0b' : '#f1f5f9',
+              color: isLoser ? '#475569' : isWinner ? '#d97706' : '#f1f5f9',
             }}
           >
             {player ? (
@@ -61,23 +56,27 @@ export default function MatchCard({ match, locked = false }: Props) {
         )
       })}
 
+      {needsByeConfirm && (
+        <div className="px-2 py-1.5 text-center" style={{ borderTop: '1px solid #1e293b' }}>
+          <p className="text-xs text-slate-500 mb-1.5">名額不足，無法舉行季軍賽</p>
+          <button
+            onClick={resolveThirdPlaceBye}
+            className="w-full py-1.5 text-xs font-bold"
+            style={{ backgroundColor: 'var(--accent)', color: '#0f0f1a' }}
+          >
+            確認繼續
+          </button>
+        </div>
+      )}
+
       {canStart && (
         <button
-          onClick={() => startMatch(match.round, match.matchIndex)}
+          onClick={startThirdPlaceMatch}
           className="w-full py-1.5 text-xs font-bold"
           style={{ backgroundColor: 'var(--accent)', color: '#0f0f1a' }}
         >
           開始比賽
         </button>
-      )}
-
-      {isReady && locked && (
-        <div
-          className="w-full py-1.5 text-xs text-center"
-          style={{ color: '#475569', borderTop: '1px solid #1e293b' }}
-        >
-          請先完成季軍賽
-        </div>
       )}
     </div>
   )
