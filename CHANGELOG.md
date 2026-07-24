@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [v1.5.0] - 2026-07-24
 ### Added
 - 3rd/4th place playoff before the championship match: once both semifinals are resolved,
   their losers face off in a new "季軍賽" bracket slot, and the final match locks (with
