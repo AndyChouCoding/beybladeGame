@@ -1,12 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Player, Bracket, Phase, TournamentState } from '@/types'
+import { Player, Match, Bracket, Phase, TournamentState } from '@/types'
 import { generateBracket } from '@/utils/bracket'
 
 const INITIAL_ID = 't0'
 
 function makeId() {
   return `t${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+}
+
+function getMatchLoser(m: Match): Player | null {
+  if (!m.winner) return null
+  return m.player1 && m.winner.id === m.player1.id ? m.player2 : m.player1
 }
 
 function defaultData(): Omit<TournamentState, 'id'> {
@@ -19,6 +24,9 @@ function defaultData(): Omit<TournamentState, 'id'> {
     currentMatchIndex: 0,
     phase: 'setup',
     champion: null,
+    thirdPlaceMatch: null,
+    runnerUp: null,
+    thirdPlace: null,
   }
 }
 
@@ -34,6 +42,9 @@ type FlatState = {
   currentMatchIndex: number
   phase: Phase
   champion: Player | null
+  thirdPlaceMatch: Match | null
+  runnerUp: Player | null
+  thirdPlace: Player | null
 }
 
 function snap(s: FlatState): TournamentState {
@@ -47,6 +58,9 @@ function snap(s: FlatState): TournamentState {
     currentMatchIndex: s.currentMatchIndex,
     phase: s.phase,
     champion: s.champion,
+    thirdPlaceMatch: s.thirdPlaceMatch,
+    runnerUp: s.runnerUp,
+    thirdPlace: s.thirdPlace,
   }
 }
 
@@ -60,6 +74,9 @@ function flat(t: TournamentState): Omit<TournamentState, 'id'> {
     currentMatchIndex: t.currentMatchIndex,
     phase: t.phase,
     champion: t.champion,
+    thirdPlaceMatch: t.thirdPlaceMatch,
+    runnerUp: t.runnerUp,
+    thirdPlace: t.thirdPlace,
   }
 }
 
@@ -73,6 +90,9 @@ interface TournamentStore {
   currentMatchIndex: number
   phase: Phase
   champion: Player | null
+  thirdPlaceMatch: Match | null
+  runnerUp: Player | null
+  thirdPlace: Player | null
 
   // Multi-tournament
   activeTournamentId: string
@@ -83,6 +103,8 @@ interface TournamentStore {
   setPlayers: (players: Player[]) => void
   initBracket: () => void
   startMatch: (round: number, matchIndex: number) => void
+  startThirdPlaceMatch: () => void
+  resolveThirdPlaceBye: () => void
   addScore: (player: 1 | 2) => void
   removeScore: (player: 1 | 2) => void
   completeMatch: (winner: 1 | 2) => void
@@ -131,7 +153,14 @@ export const useTournamentStore = create<TournamentStore>()(
       initBracket: () => {
         const { players } = get()
         const bracket = generateBracket(players)
-        set({ bracket, phase: 'bracket', champion: null })
+        set({
+          bracket,
+          phase: 'bracket',
+          champion: null,
+          thirdPlaceMatch: null,
+          runnerUp: null,
+          thirdPlace: null,
+        })
       },
 
       startMatch: (round, matchIndex) => {
@@ -147,8 +176,37 @@ export const useTournamentStore = create<TournamentStore>()(
         })
       },
 
+      startThirdPlaceMatch: () => {
+        set((state) => {
+          if (!state.thirdPlaceMatch) return {}
+          return {
+            thirdPlaceMatch: { ...state.thirdPlaceMatch, status: 'active' },
+            currentRound: -1,
+            currentMatchIndex: 0,
+            phase: 'match',
+          }
+        })
+      },
+
+      resolveThirdPlaceBye: () => {
+        set((state) => {
+          if (!state.thirdPlaceMatch) return {}
+          const winner = state.thirdPlaceMatch.player1 ?? state.thirdPlaceMatch.player2
+          return {
+            thirdPlaceMatch: { ...state.thirdPlaceMatch, winner, status: 'completed' },
+          }
+        })
+      },
+
       addScore: (player) => {
         set((state) => {
+          if (state.currentRound === -1) {
+            if (!state.thirdPlaceMatch) return {}
+            const match = { ...state.thirdPlaceMatch }
+            if (player === 1 && match.score1 < 4) match.score1++
+            if (player === 2 && match.score2 < 4) match.score2++
+            return { thirdPlaceMatch: match }
+          }
           const { currentRound, currentMatchIndex } = state
           const newBracket = state.bracket.map((r) => r.map((m) => ({ ...m })))
           const match = newBracket[currentRound][currentMatchIndex]
@@ -160,6 +218,13 @@ export const useTournamentStore = create<TournamentStore>()(
 
       removeScore: (player) => {
         set((state) => {
+          if (state.currentRound === -1) {
+            if (!state.thirdPlaceMatch) return {}
+            const match = { ...state.thirdPlaceMatch }
+            if (player === 1 && match.score1 > 0) match.score1--
+            if (player === 2 && match.score2 > 0) match.score2--
+            return { thirdPlaceMatch: match }
+          }
           const { currentRound, currentMatchIndex } = state
           const newBracket = state.bracket.map((r) => r.map((m) => ({ ...m })))
           const match = newBracket[currentRound][currentMatchIndex]
@@ -171,6 +236,14 @@ export const useTournamentStore = create<TournamentStore>()(
 
       completeMatch: (winner) => {
         set((state) => {
+          if (state.currentRound === -1) {
+            if (!state.thirdPlaceMatch) return {}
+            const match = { ...state.thirdPlaceMatch }
+            match.winner = winner === 1 ? match.player1 : match.player2
+            match.status = 'completed'
+            return { thirdPlaceMatch: match, phase: 'bracket' }
+          }
+
           const { currentRound, currentMatchIndex } = state
           const newBracket = state.bracket.map((r) => r.map((m) => ({ ...m })))
           const match = newBracket[currentRound][currentMatchIndex]
@@ -219,13 +292,47 @@ export const useTournamentStore = create<TournamentStore>()(
             }
           }
 
+          // Once both semifinals are resolved, derive the 3rd/4th place match from their losers.
+          let thirdPlaceMatch = state.thirdPlaceMatch
+          const semifinalRound = newBracket.length - 2
+          if (
+            !thirdPlaceMatch &&
+            semifinalRound >= 0 &&
+            newBracket[semifinalRound][0]?.status === 'completed' &&
+            newBracket[semifinalRound][1]?.status === 'completed'
+          ) {
+            const sf0 = newBracket[semifinalRound][0]
+            const sf1 = newBracket[semifinalRound][1]
+            thirdPlaceMatch = {
+              id: 'third-place',
+              round: -1,
+              matchIndex: 0,
+              player1: getMatchLoser(sf0),
+              player2: getMatchLoser(sf1),
+              score1: 0,
+              score2: 0,
+              winner: null,
+              status: 'pending',
+            }
+          }
+
           const finalMatch = newBracket[newBracket.length - 1][0]
           const isChampion = finalMatch.status === 'completed' && finalMatch.winner !== null
 
+          let runnerUp = state.runnerUp
+          let thirdPlace = state.thirdPlace
+          if (isChampion) {
+            runnerUp = getMatchLoser(finalMatch)
+            thirdPlace = thirdPlaceMatch?.winner ?? null
+          }
+
           return {
             bracket: newBracket,
+            thirdPlaceMatch,
             phase: isChampion ? 'champion' : 'bracket',
             champion: isChampion ? finalMatch.winner : state.champion,
+            runnerUp,
+            thirdPlace,
           }
         })
       },
@@ -253,7 +360,26 @@ export const useTournamentStore = create<TournamentStore>()(
               winner: match.winner?.id === id ? { ...match.winner, name } : match.winner,
             }))
           ),
+          thirdPlaceMatch: state.thirdPlaceMatch
+            ? {
+                ...state.thirdPlaceMatch,
+                player1:
+                  state.thirdPlaceMatch.player1?.id === id
+                    ? { ...state.thirdPlaceMatch.player1, name }
+                    : state.thirdPlaceMatch.player1,
+                player2:
+                  state.thirdPlaceMatch.player2?.id === id
+                    ? { ...state.thirdPlaceMatch.player2, name }
+                    : state.thirdPlaceMatch.player2,
+                winner:
+                  state.thirdPlaceMatch.winner?.id === id
+                    ? { ...state.thirdPlaceMatch.winner, name }
+                    : state.thirdPlaceMatch.winner,
+              }
+            : state.thirdPlaceMatch,
           champion: state.champion?.id === id ? { ...state.champion, name } : state.champion,
+          runnerUp: state.runnerUp?.id === id ? { ...state.runnerUp, name } : state.runnerUp,
+          thirdPlace: state.thirdPlace?.id === id ? { ...state.thirdPlace, name } : state.thirdPlace,
         })),
 
       setPlayerPhoto: (id, photoUrl) =>
@@ -267,7 +393,27 @@ export const useTournamentStore = create<TournamentStore>()(
               winner: match.winner?.id === id ? { ...match.winner, photoUrl } : match.winner,
             }))
           ),
+          thirdPlaceMatch: state.thirdPlaceMatch
+            ? {
+                ...state.thirdPlaceMatch,
+                player1:
+                  state.thirdPlaceMatch.player1?.id === id
+                    ? { ...state.thirdPlaceMatch.player1, photoUrl }
+                    : state.thirdPlaceMatch.player1,
+                player2:
+                  state.thirdPlaceMatch.player2?.id === id
+                    ? { ...state.thirdPlaceMatch.player2, photoUrl }
+                    : state.thirdPlaceMatch.player2,
+                winner:
+                  state.thirdPlaceMatch.winner?.id === id
+                    ? { ...state.thirdPlaceMatch.winner, photoUrl }
+                    : state.thirdPlaceMatch.winner,
+              }
+            : state.thirdPlaceMatch,
           champion: state.champion?.id === id ? { ...state.champion, photoUrl } : state.champion,
+          runnerUp: state.runnerUp?.id === id ? { ...state.runnerUp, photoUrl } : state.runnerUp,
+          thirdPlace:
+            state.thirdPlace?.id === id ? { ...state.thirdPlace, photoUrl } : state.thirdPlace,
         })),
 
       removePlayer: (id) =>
@@ -310,6 +456,9 @@ export const useTournamentStore = create<TournamentStore>()(
           currentMatchIndex: 0,
           phase: 'setup',
           champion: null,
+          thirdPlaceMatch: null,
+          runnerUp: null,
+          thirdPlace: null,
         })),
 
       clearPlayers: () => set({ players: [] }),
@@ -347,6 +496,9 @@ export const useTournamentStore = create<TournamentStore>()(
             currentMatchIndex: 0,
             phase: 'players',
             champion: null,
+            thirdPlaceMatch: null,
+            runnerUp: null,
+            thirdPlace: null,
           }
           return {
             tournaments: {

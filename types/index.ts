@@ -30,4 +30,7 @@ export interface TournamentState {
   currentMatchIndex: number
   phase: Phase
   champion: Player | null
+  thirdPlaceMatch: Match | null
+  runnerUp: Player | null
+  thirdPlace: Player | null
 }

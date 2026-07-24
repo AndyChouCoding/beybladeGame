@@ -64,10 +64,18 @@ const WIN_SCORE = 4
 type MatchPhase = 'idle' | 'active' | 'finished'
 
 export default function MatchScreen() {
-  const { bracket, currentRound, currentMatchIndex, addScore, removeScore, completeMatch, updatePlayer } =
-    useTournamentStore()
+  const {
+    bracket,
+    currentRound,
+    currentMatchIndex,
+    thirdPlaceMatch,
+    addScore,
+    removeScore,
+    completeMatch,
+    updatePlayer,
+  } = useTournamentStore()
 
-  const match = bracket[currentRound]?.[currentMatchIndex]
+  const match = currentRound === -1 ? thirdPlaceMatch : bracket[currentRound]?.[currentMatchIndex]
   const [phase, setPhase] = useState<MatchPhase>('idle')
   const [showEditPlayers, setShowEditPlayers] = useState(false)
 
