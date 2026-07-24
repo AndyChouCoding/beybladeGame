@@ -13,6 +13,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-TW" className="h-full">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => r.unregister());
+            });
+          }
+        `}} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
